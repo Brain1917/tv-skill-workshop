@@ -1,6 +1,7 @@
 import importlib.util
 import json
 from pathlib import Path
+from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import patch
 from io import BytesIO
@@ -19,6 +20,25 @@ def release(tag, draft=False, asset="uploaded"):
 
 
 class VersionTest(unittest.TestCase):
+    def test_greeting_requires_complete_skills_and_current_release(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            version = root / "tv-workshop/VERSION"
+            for name in check.SKILL_FILES:
+                path = root / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("v0.2.0-rc.3")
+            ready = "Всё установлено, можно использовать для воркшопа."
+            for status, latest in [("current", "v0.2.0-rc.3"), ("update", "v0.2.0"), ("unknown", None)]:
+                with self.subTest(status=status), patch.object(check, "inspect_version", return_value=(status, latest)):
+                    message = check.installation_status(version)
+                    self.assertEqual(message == ready, status == "current")
+                    if status == "update":
+                        self.assertIn(latest, message)
+            (root / "tv-skill-builder/scripts/pack_skill.py").unlink()
+            with patch.object(check, "inspect_version", side_effect=AssertionError("unexpected network request")):
+                self.assertIn("pack_skill.py", check.installation_status(version))
+
     def status(self, local, releases):
         with patch.object(check, "urlopen", return_value=BytesIO(json.dumps(releases).encode())) as get:
             result = check.inspect_version(local)

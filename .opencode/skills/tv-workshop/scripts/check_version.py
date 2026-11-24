@@ -4,12 +4,19 @@ import json
 from http.client import HTTPException
 from pathlib import Path
 import re
+import sys
 from urllib.request import Request, urlopen
 
 
 REPOSITORY = "https://github.com/Brain1917/tv-skill-workshop"
 API = "https://api.github.com/repos/Brain1917/tv-skill-workshop/releases"
 VERSION_FILE = Path(__file__).resolve().parents[1] / "VERSION"
+SKILL_FILES = (
+    "tv-workshop/VERSION", "tv-workshop/SKILL.md",
+    "tv-workshop/scripts/check_version.py", "tv-workshop/references/practice.md",
+    "tv-workshop/references/clear-russian.md", "tv-skill-builder/SKILL.md",
+    "tv-skill-builder/references/native-pack.md", "tv-skill-builder/scripts/pack_skill.py",
+)
 TAG = re.compile(r"v(\d{1,9})\.(\d{1,9})\.(\d{1,9})(?:-rc\.(\d{1,9}))?")
 
 
@@ -54,11 +61,36 @@ def inspect_version(local):
     return ("current" if newest == local else "update"), newest
 
 
-if __name__ == "__main__":
+def read_version(path):
     try:
-        installed = VERSION_FILE.read_text(encoding="utf-8").strip()
+        return path.read_text(encoding="utf-8").strip()
     except (OSError, UnicodeError):
-        installed = ""
+        return ""
+
+
+def installation_status(version_file):
+    root = version_file.parent.parent
+    for name in SKILL_FILES:
+        path = root / name
+        try:
+            present = path.is_file() and path.stat().st_size > 0
+        except OSError:
+            present = False
+        if not present:
+            return f"Не удалось найти или прочитать {name}. Распакуйте комплект целиком."
+    status, latest = inspect_version(read_version(version_file))
+    if status == "current":
+        return "Всё установлено, можно использовать для воркшопа."
+    if status == "update":
+        return f"Обновите комплект до {latest} и повторите проверку: {REPOSITORY}/releases/tag/{latest}"
+    return "Файлы на месте. Сверить версию с GitHub не удалось. Повторите проверку позже."
+
+
+if __name__ == "__main__":
+    if sys.argv[1:] == ["--status"]:
+        print(installation_status(VERSION_FILE))
+        sys.exit(0)
+    installed = read_version(VERSION_FILE)
     status, latest = inspect_version(installed)
     if status == "current":
         print(f"Установлена актуальная версия {installed}. Можно начинать практику.")

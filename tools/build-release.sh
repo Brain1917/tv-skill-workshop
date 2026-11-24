@@ -8,7 +8,7 @@ fi
 out=$1
 revision=$(git rev-parse --verify "${2:-HEAD}^{commit}")
 git archive --format=zip --prefix=TV-Workshop/ --output="$out" "$revision" -- \
-    README.md 'Начать практику.md' \
+    AGENTS.md README.md 'Начать практику.md' \
     .opencode/skills/tv-workshop/SKILL.md \
     .opencode/skills/tv-workshop/VERSION \
     .opencode/skills/tv-workshop/scripts/check_version.py \
