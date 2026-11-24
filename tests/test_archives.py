@@ -101,7 +101,9 @@ class ArchiveTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         with ZipFile(archive) as z:
             files = {n.removeprefix("TV-Workshop/") for n in z.namelist() if not n.endswith("/")}
-            self.assertEqual(files, {"README.md", "Начать здесь.md",
+            self.assertEqual(files, {"README.md", "Начать практику.md",
+                ".opencode/skills/tv-workshop/VERSION",
+                ".opencode/skills/tv-workshop/scripts/check_version.py",
                 ".opencode/skills/tv-workshop/SKILL.md", ".opencode/skills/tv-skill-builder/SKILL.md",
                 ".opencode/skills/tv-workshop/references/practice.md",
                 ".opencode/skills/tv-workshop/references/clear-russian.md",
