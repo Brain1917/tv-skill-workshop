@@ -2,6 +2,7 @@ import importlib.util
 import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
+import sys
 import unittest
 from unittest.mock import patch
 from io import BytesIO
@@ -9,6 +10,7 @@ from urllib.error import HTTPError, URLError
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / ".opencode/skills/tv-workshop/scripts/check_version.py"
+sys.path.insert(0, str(SCRIPT.parent))
 spec = importlib.util.spec_from_file_location("workshop_check", SCRIPT)
 check = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(check)
@@ -63,7 +65,7 @@ class VersionTest(unittest.TestCase):
                 if phrase == "403":
                     self.assertNotIn("лимит", reason.lower())
 
-    def test_greeting_requires_complete_skills_and_current_release(self):
+    def test_greeting_requires_usable_skills_with_or_without_network(self):
         with TemporaryDirectory() as directory:
             root = Path(directory)
             version = root / "tv-workshop/VERSION"
@@ -72,12 +74,9 @@ class VersionTest(unittest.TestCase):
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text("v0.2.0-rc.3")
             ready = "Всё установлено, можно использовать для воркшопа."
-            for status, latest in [("current", "v0.2.0-rc.3"), ("update", "v0.2.0"), ("unknown", None)]:
+            for status, latest in [("current", "v0.2.0-rc.3"), ("unknown", "offline")]:
                 with self.subTest(status=status), patch.object(check, "inspect_version", return_value=(status, latest)):
-                    message = check.installation_status(version)
-                    self.assertEqual(message == ready, status == "current")
-                    if status == "update":
-                        self.assertIn(latest, message)
+                    self.assertEqual(check.installation_status(version), ready)
             (root / "tv-skill-builder/scripts/pack_skill.py").unlink()
             with patch.object(check, "inspect_version", side_effect=AssertionError("unexpected network request")):
                 self.assertIn("pack_skill.py", check.installation_status(version))

@@ -104,6 +104,7 @@ class ArchiveTest(unittest.TestCase):
             self.assertEqual(files, {"README.md", "Начать практику.md", "AGENTS.md",
                 ".opencode/skills/tv-workshop/VERSION",
                 ".opencode/skills/tv-workshop/scripts/check_version.py",
+                ".opencode/skills/tv-workshop/scripts/install_release.py",
                 ".opencode/skills/tv-workshop/SKILL.md", ".opencode/skills/tv-skill-builder/SKILL.md",
                 ".opencode/skills/tv-workshop/references/practice.md",
                 ".opencode/skills/tv-workshop/references/clear-russian.md",

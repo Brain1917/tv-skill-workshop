@@ -1,10 +1,12 @@
-"""Check a workshop installation against published GitHub releases, without changing it."""
+"""Check a workshop installation and quietly install new GitHub releases."""
 
 import json
 from http.client import HTTPException
 from pathlib import Path
 import re
-import sys
+from zipfile import BadZipFile
+from zlib import error as ZlibError
+import install_release
 from urllib.error import HTTPError
 from urllib.request import HTTPRedirectHandler, Request, build_opener, urlopen
 from xml.etree import ElementTree
@@ -12,10 +14,10 @@ from xml.etree import ElementTree
 
 REPOSITORY = "https://github.com/Brain1917/tv-skill-workshop"
 API = "https://api.github.com/repos/Brain1917/tv-skill-workshop/releases"
-VERSION_FILE = Path(__file__).resolve().parents[1] / "VERSION"
+VERSION_FILE = Path(__file__).absolute().parents[1] / "VERSION"
 SKILL_FILES = (
     "tv-workshop/VERSION", "tv-workshop/SKILL.md",
-    "tv-workshop/scripts/check_version.py", "tv-workshop/references/practice.md",
+    "tv-workshop/scripts/check_version.py", "tv-workshop/scripts/install_release.py", "tv-workshop/references/practice.md",
     "tv-workshop/references/clear-russian.md", "tv-skill-builder/SKILL.md",
     "tv-skill-builder/references/native-pack.md", "tv-skill-builder/scripts/pack_skill.py",
 )
@@ -137,35 +139,35 @@ def read_version(path):
         return ""
 
 
+READY = "Всё установлено, можно использовать для воркшопа."
+HELP = "Позовите технического помощника к вашему столу."
+INSTALL_ERRORS = (*FAILURES, BadZipFile, RuntimeError, EOFError, ZlibError)
+
+
 def installation_status(version_file):
     root = version_file.parent.parent
-    for name in SKILL_FILES:
-        path = root / name
-        try:
-            present = path.is_file() and path.stat().st_size > 0
-        except OSError:
-            present = False
-        if not present:
-            return f"Не удалось найти или прочитать {name}. Распакуйте комплект целиком."
-    status, latest = inspect_version(read_version(version_file))
-    if status == "current":
-        return "Всё установлено, можно использовать для воркшопа."
-    if status == "update":
-        return f"Обновите комплект до {latest} и повторите проверку: {REPOSITORY}/releases/tag/{latest}"
-    return f"Файлы на месте. {latest} Сверьте версию на странице выпусков: {REPOSITORY}/releases"
+    try:
+        install_release.validate_tree(root, SKILL_FILES)
+        with install_release.locked(root):
+            install_release.recover(root, SKILL_FILES)
+            local = read_version(version_file)
+            if not TAG.fullmatch(local):
+                return HELP
+            status, latest = inspect_version(local)
+            if status == "update":
+                try:
+                    install_release.install(root, latest, SKILL_FILES, REPOSITORY)
+                except INSTALL_ERRORS:
+                    install_release.recover(root, SKILL_FILES)
+            return READY
+    except FileNotFoundError as exc:
+        name = Path(exc.filename).name if exc.filename else ""
+        if name and name in {Path(path).name for path in SKILL_FILES}:
+            return f"Не найден {name}. {HELP}"
+        return HELP
+    except INSTALL_ERRORS:
+        return HELP
 
 
 if __name__ == "__main__":
-    if sys.argv[1:] == ["--status"]:
-        print(installation_status(VERSION_FILE))
-        sys.exit(0)
-    installed = read_version(VERSION_FILE)
-    status, latest = inspect_version(installed)
-    if status == "current":
-        print(f"Установлена актуальная версия {installed}. Можно начинать практику.")
-    elif status == "update":
-        print(f"Установлена {installed}. Доступна {latest}. Попросите организатора обновить помощник.")
-        print(f"{REPOSITORY}/releases/tag/{latest}")
-    else:
-        print(f"{latest} Можно продолжить с установленной копией.")
-        print(f"{REPOSITORY}/releases")
+    print(installation_status(VERSION_FILE))

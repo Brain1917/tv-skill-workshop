@@ -12,6 +12,7 @@ git archive --format=zip --prefix=TV-Workshop/ --output="$out" "$revision" -- \
     .opencode/skills/tv-workshop/SKILL.md \
     .opencode/skills/tv-workshop/VERSION \
     .opencode/skills/tv-workshop/scripts/check_version.py \
+    .opencode/skills/tv-workshop/scripts/install_release.py \
     .opencode/skills/tv-workshop/references/practice.md \
     .opencode/skills/tv-workshop/references/clear-russian.md \
     .opencode/skills/tv-skill-builder/SKILL.md \
